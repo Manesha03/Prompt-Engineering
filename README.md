@@ -150,18 +150,3 @@ V1 establishes a baseline with minimal instruction. It is useful for showing com
 V2 improves task framing by adding audience, expected sections, constraints, and rating-label rules. This usually improves relevance, completeness, and instruction-following.
 
 V3 is optimized for repeatability and evaluation. It uses role prompting, structured output, explicit rules, evidence grounding, confidence language, and few-shot examples for classification. This makes outputs easier to compare and easier to score.
-
-## Notes for Submission
-
-Include these files and folders:
-
-- Python source files under `src/`
-- Prompt versions YAML
-- Streamlit dashboard
-- Dataset file or dataset download instructions
-- Evaluation scripts
-- `requirements.txt`
-- `.env.example`
-- `README.md`
-
-Do not submit your real `.env` file or API key.
