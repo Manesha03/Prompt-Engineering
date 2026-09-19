@@ -17,10 +17,11 @@ def main() -> None:
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
     parser.add_argument("--version", choices=["v1", "v2", "v3"], default="v3")
     parser.add_argument("--sample-size", type=int, default=25)
+    parser.add_argument("--mode", choices=["local", "openai"], default="local")
     parser.add_argument("--output", type=Path, default=Path("reports/classification_metrics.json"))
     args = parser.parse_args()
 
-    metrics = evaluate_classification_sample(args.data_path, args.version, args.sample_size)
+    metrics = evaluate_classification_sample(args.data_path, args.version, args.sample_size, mode=args.mode)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(json.dumps(metrics, indent=2))
