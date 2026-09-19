@@ -1,0 +1,220 @@
+data_analysis:
+  v1:
+    name: Basic insight prompt
+    goal: Ask for general review insights with minimal guidance.
+    template: |
+      Analyze these customer reviews and ratings. Give useful insights.
+
+      Dataset facts:
+      {dataset_insights}
+
+      Reviews:
+      {reviews}
+  v2:
+    name: Guided analytical prompt
+    goal: Adds context, specific analysis dimensions, and practical constraints.
+    template: |
+      You are analyzing Amazon Fine Food customer reviews for a product team.
+      Use the rating distribution and review text to identify meaningful patterns.
+
+      Dataset facts:
+      {dataset_insights}
+
+      Reviews:
+      {reviews}
+
+      Provide:
+      - Rating and sentiment patterns
+      - Common positive drivers
+      - Common negative drivers
+      - Quality, delivery, packaging, price, or taste issues
+      - 3 business insights
+
+      Keep the answer grounded in the provided data only.
+  v3:
+    name: Structured analyst prompt
+    goal: Uses role prompting, structured output, evidence rules, and clear limits.
+    template: |
+      Role: Senior customer-insights analyst for an e-commerce food brand.
+
+      Task: Analyze the provided Amazon Fine Food reviews and convert them into evidence-based insights.
+
+      Rules:
+      - Use only the provided review text and rating facts.
+      - Separate observations from recommendations.
+      - Mention uncertainty when the sample is too small.
+      - Do not invent product details, sales numbers, or customer demographics.
+      - Prefer concise bullets over long paragraphs.
+
+      Dataset facts:
+      {dataset_insights}
+
+      Reviews:
+      {reviews}
+
+      Output exactly in this structure:
+      1. Executive Summary: 2-3 sentences.
+      2. Rating Pattern: include average score and distribution implications.
+      3. Positive Themes: bullets with brief evidence.
+      4. Negative Themes or Risks: bullets with brief evidence.
+      5. Actionable Insights: 3 bullets, each tied to a review signal.
+      6. Limitations: note sample-size or evidence limitations.
+
+summarization:
+  v1:
+    name: Basic summary prompt
+    goal: Simple request to summarize reviews.
+    template: |
+      Summarize these customer reviews:
+
+      {reviews}
+  v2:
+    name: Category summary prompt
+    goal: Adds categories that make the summary easier to evaluate.
+    template: |
+      Summarize the following Amazon Fine Food reviews for a product manager.
+
+      Reviews:
+      {reviews}
+
+      Include:
+      - Key positive points
+      - Key negative points
+      - Customer concerns
+      - Overall opinion
+
+      Be concise and avoid adding details not present in the reviews.
+  v3:
+    name: Structured review synthesis prompt
+    goal: Uses role, constrained format, evidence grounding, and consistency checks.
+    template: |
+      Role: Review synthesis specialist.
+
+      Summarize the reviews below into a balanced customer-feedback brief.
+
+      Rules:
+      - Use only information present in the reviews.
+      - If reviews disagree, say "mixed feedback" and explain the difference.
+      - Keep each bullet under 25 words.
+      - Do not copy long phrases from the reviews.
+
+      Reviews:
+      {reviews}
+
+      Output as Markdown:
+      ## Key Positive Points
+      - ...
+      ## Key Negative Points
+      - ...
+      ## Customer Concerns
+      - ...
+      ## Overall Opinion
+      One short paragraph.
+      ## Confidence
+      High, Medium, or Low with one reason.
+
+classification:
+  v1:
+    name: Basic sentiment classifier
+    goal: Minimal classification prompt.
+    template: |
+      Classify this review as Positive, Neutral, or Negative:
+
+      {review}
+  v2:
+    name: Rule-based classifier
+    goal: Adds rating-label guidance and returns a more parseable answer.
+    template: |
+      Classify the customer review sentiment as one of: Positive, Neutral, Negative.
+
+      Reference rule when a rating is shown:
+      - 1 or 2 stars means Negative
+      - 3 stars means Neutral
+      - 4 or 5 stars means Positive
+
+      Review:
+      {review}
+
+      Return:
+      Label: <Positive|Neutral|Negative>
+      Reason: <one sentence>
+  v3:
+    name: JSON classifier with few-shot examples
+    goal: Optimized for automated evaluation using explicit rules and JSON output.
+    template: |
+      Role: Sentiment classification engine for Amazon food reviews.
+
+      Choose exactly one label:
+      - Positive: satisfied customer, praise, repeat purchase, or rating 4-5.
+      - Neutral: mixed/uncertain sentiment, factual comment, or rating 3.
+      - Negative: complaint, dissatisfaction, defect, health concern, or rating 1-2.
+
+      Few-shot examples:
+      Review: "Rating: 5 | Great flavor and arrived fresh."
+      Output: {{"label":"Positive","confidence":"High","reason":"The rating and text both show satisfaction."}}
+
+      Review: "Rating: 3 | It was okay, but the texture was not what I expected."
+      Output: {{"label":"Neutral","confidence":"Medium","reason":"The review contains mixed feedback and a neutral rating."}}
+
+      Review: "Rating: 1 | Package was stale and I will not buy again."
+      Output: {{"label":"Negative","confidence":"High","reason":"The review reports a serious quality complaint and low rating."}}
+
+      Rules:
+      - Return valid JSON only.
+      - Do not include Markdown.
+      - The label must be Positive, Neutral, or Negative.
+      - Use rating as the reference label when rating and text conflict.
+
+      Review:
+      {review}
+
+content_generation:
+  v1:
+    name: Basic recommendations prompt
+    goal: Simple request for improvements.
+    template: |
+      Based on these reviews, suggest product improvements and customer experience recommendations.
+
+      {reviews}
+  v2:
+    name: Product-team recommendation prompt
+    goal: Adds audience, recommendation categories, and grounding constraints.
+    template: |
+      You are helping a product team improve an Amazon food product.
+      Read the customer reviews and recommend practical actions.
+
+      Reviews:
+      {reviews}
+
+      Provide:
+      - Product improvement ideas
+      - Packaging or delivery improvements
+      - Customer experience recommendations
+      - Risks to monitor
+
+      Keep recommendations tied to review evidence.
+  v3:
+    name: Prioritized action-plan prompt
+    goal: Uses role prompting, structured prioritization, impact/effort framing, and evidence constraints.
+    template: |
+      Role: Customer-experience strategist for an online food retailer.
+
+      Goal: Generate practical product and customer-experience recommendations from review feedback.
+
+      Rules:
+      - Use only signals found in the provided reviews.
+      - Do not promise medical, legal, or guaranteed business outcomes.
+      - Separate quick wins from longer-term improvements.
+      - Include evidence, expected impact, effort, and priority.
+      - If evidence is weak, mark confidence as Low.
+
+      Reviews:
+      {reviews}
+
+      Output a Markdown table with columns:
+      Recommendation | Review Evidence | Expected Impact | Effort | Priority | Confidence
+
+      After the table, add:
+      - Top next step
+      - What to measure after implementation
+
