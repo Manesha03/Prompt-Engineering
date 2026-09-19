@@ -3,11 +3,16 @@ from __future__ import annotations
 import json
 import re
 
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ModuleNotFoundError:
+    OpenAI = None
 
 
 class LLMClient:
     def __init__(self, api_key: str, model: str):
+        if OpenAI is None:
+            raise ModuleNotFoundError("The openai package is not installed. Run `pip install -r requirements.txt` or use Local free mode.")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is missing. Create a .env file from .env.example.")
         self.client = OpenAI(api_key=api_key)
@@ -41,4 +46,3 @@ def normalize_label(label: str) -> str:
     if "positive" in lowered:
         return "Positive"
     return "Unknown"
-

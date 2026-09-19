@@ -7,10 +7,10 @@ from pathlib import Path
 
 from .config import load_settings
 from .data import dataset_insights, load_reviews
-from .evaluation import RUBRIC, empty_rubric_results
+from .evaluation import empty_rubric_results
 from .llm import LLMClient
-from .prompts import get_prompt, load_prompts, prompt_metadata
-from .runner import run_prompt
+from .prompts import get_prompt, prompt_metadata
+from .runner import local_prompt_response, run_prompt
 
 
 st.set_page_config(page_title="Customer Review Prompt Engineering", layout="wide")
@@ -32,6 +32,7 @@ def main() -> None:
         task = st.selectbox("Task", ["data_analysis", "summarization", "classification", "content_generation"])
         version = st.radio("Prompt version", ["v1", "v2", "v3"], horizontal=True)
         input_mode = st.radio("Review input", ["Dataset rows", "Custom text"])
+        provider = st.radio("Run mode", ["Local free mode", "OpenAI API"], help="Local mode does not use API credits.")
 
     df = cached_reviews(str(settings["data_path"]), sample_size)
     insights = dataset_insights(df)
@@ -42,12 +43,9 @@ def main() -> None:
     metric_cols[2].metric("Positive", insights["label_distribution"].get("Positive", 0))
     metric_cols[3].metric("Negative", insights["label_distribution"].get("Negative", 0))
 
-    chart_col, table_col = st.columns([1, 1])
-    with chart_col:
-        score_df = pd.DataFrame({"score": list(insights["score_distribution"].keys()), "count": list(insights["score_distribution"].values())})
-        st.plotly_chart(px.bar(score_df, x="score", y="count", title="Rating Distribution"), use_container_width=True)
-    with table_col:
-        st.dataframe(df[["Score", "reference_label", "Summary", "Text"]].head(12), use_container_width=True, height=340)
+    score_df = pd.DataFrame({"score": list(insights["score_distribution"].keys()), "count": list(insights["score_distribution"].values())})
+    st.plotly_chart(px.bar(score_df, x="score", y="count", title="Rating Distribution"), use_container_width=True)
+    st.dataframe(df[["Score", "reference_label", "Summary", "Text"]].head(12), use_container_width=True, height=340)
 
     if input_mode == "Dataset rows":
         count = st.slider("Reviews sent to prompt", 1, 10, 5)
@@ -69,11 +67,18 @@ def main() -> None:
     with run_cols[0]:
         if st.button("Run selected prompt", type="primary"):
             try:
-                client = LLMClient(settings["api_key"], settings["model"])
-                response = run_prompt(task, version, prompt_reviews, client, insights)
+                if provider == "OpenAI API":
+                    client = LLMClient(settings["api_key"], settings["model"])
+                    response = run_prompt(task, version, prompt_reviews, client, insights)
+                else:
+                    response = local_prompt_response(task, version, prompt_reviews, insights)
                 st.session_state["last_response"] = response
             except Exception as exc:
-                st.error(str(exc))
+                message = str(exc)
+                if "insufficient_quota" in message or "credit_balance_exhausted" in message or "429" in message:
+                    st.error("OpenAI API credits are exhausted. Switch Run mode to Local free mode, or add API billing credits.")
+                else:
+                    st.error(message)
     with run_cols[1]:
         compare = st.button("Compare V1, V2, V3")
 
@@ -83,14 +88,21 @@ def main() -> None:
 
     if compare:
         try:
-            client = LLMClient(settings["api_key"], settings["model"])
             cols = st.columns(3)
             for i, v in enumerate(["v1", "v2", "v3"]):
                 with cols[i]:
                     st.markdown(f"**{v.upper()}**")
-                    st.markdown(run_prompt(task, v, prompt_reviews, client, insights))
+                    if provider == "OpenAI API":
+                        client = LLMClient(settings["api_key"], settings["model"])
+                        st.markdown(run_prompt(task, v, prompt_reviews, client, insights))
+                    else:
+                        st.markdown(local_prompt_response(task, v, prompt_reviews, insights))
         except Exception as exc:
-            st.error(str(exc))
+            message = str(exc)
+            if "insufficient_quota" in message or "credit_balance_exhausted" in message or "429" in message:
+                st.error("OpenAI API credits are exhausted. Switch Run mode to Local free mode, or add API billing credits.")
+            else:
+                st.error(message)
 
     st.subheader("Evaluation Rubric")
     if task == "classification":
